@@ -1,0 +1,38 @@
+# Step 1: 베이스 이미지 설정 (Node.js 버전 22 사용)
+FROM node:22 AS builder
+
+# Step 2: 작업 디렉토리 설정
+WORKDIR /app
+
+# Step 3: package.json과 package-lock.json 복사
+COPY package.json package-lock.json ./
+
+# Step 4: 의존성 설치
+RUN npm install
+
+# Step 5: 소스 코드 복사
+COPY . .
+
+# Step 6: Next.js 애플리케이션 빌드
+RUN npm run build
+
+# Step 7: 베이스 이미지 설정 (Node.js로 변경하여 빌드 후 최적화)
+FROM node:22-alpine AS runner
+
+# Step 8: 작업 디렉토리 설정
+WORKDIR /app
+
+# Step 9: 빌드된 파일과 필요한 파일만 복사
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./
+
+# Step 10: 프로덕션용 의존성 설치
+RUN npm install --only=production
+
+# Step 11: 환경 변수 설정
+ENV NODE_ENV production
+
+# Step 12: Next.js 서버 시작 (포트 3000 사용)
+EXPOSE 3000
+CMD ["npm", "run", "start"]
